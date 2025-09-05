@@ -106,11 +106,15 @@
     id message = [self currentMessageObject];
 
     if (autoScheduled && message && [self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
+        // Pianifica il messaggio 10 secondi dopo
         NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + 10;
         [self sendMessage:message scheduleTime:scheduledTime];
-        return; // evita %orig per non inviare doppio
+
+        // Evita che il messaggio venga inviato subito
+        return;
     }
 
+    // Se toggle OFF, invio normale
     %orig;
 }
 
