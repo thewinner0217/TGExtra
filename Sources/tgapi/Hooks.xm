@@ -1,6 +1,7 @@
 #import "Headers.h"
 
 #define kChannelsReadHistory -871347913
+#define kEnableScheduledMessages @"enableScheduledMessages"
 
 %hook MTRequest
 %property (nonatomic, strong) NSData *fakeData;
@@ -83,6 +84,27 @@
          }
         return;
     }
+    %orig;
+}
+
+%end
+
+%hook TGModernConversationInputController
+
+- (void)sendCurrentMessage {
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+    BOOL autoScheduled = [prefs boolForKey:kEnableScheduledMessages];
+
+    id message = [self currentMessageObject];
+    
+    if (autoScheduled && message && [self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
+        // Calcola l'orario di invio 10 secondi nel futuro
+        NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + 10;
+        [self sendMessage:message scheduleTime:scheduledTime];
+        return; // Evita di chiamare %orig per non inviare doppio
+    }
+
+    // Altrimenti invia normalmente
     %orig;
 }
 
