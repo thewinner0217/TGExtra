@@ -4,6 +4,7 @@
 #import "Headers.h"
 
 #define TGLoc(key) [TGExtraLocalization localizedStringForKey:(key)]
+#define kEnableScheduledMessages @"enableScheduledMessages"
 
 @interface TGExtra ()
 @property (nonatomic, strong) UITableView *tableView;
@@ -166,21 +167,24 @@
 # pragma mark - UITableViewDataSource
 
 typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
-    GHOST_MODE = 0,
-    READ_RECEIPT = 1,
-    MISC = 2,
-    FILE_FIXER = 3,
-    FAKE_LOCATION = 4,
-    LANGUAGE = 5,
-	CREDITS = 6,
+    FE_OPTIONS = 0,
+	GHOST_MODE = 1,
+    READ_RECEIPT = 2,
+    MISC = 3,
+    FILE_FIXER = 4,
+    FAKE_LOCATION = 5,
+    LANGUAGE = 6,
+	CREDITS = 7,
 };
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 7;
+    return 8;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
 	switch (section) {
+ 		case FE_OPTIONS:
+   			return 1;
 		case GHOST_MODE:
 		   return 17;
 		case READ_RECEIPT:
@@ -204,6 +208,8 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
 
 	switch (section) {
+ 		case FE_OPTIONS:
+   			return @"FE OPTIONS";
 		case GHOST_MODE:
 		   return TGLoc(@"GHOST_MODE_SECTION_HEADER");
 		case READ_RECEIPT:
@@ -245,7 +251,32 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 	UITableViewCell *cell;
 
-	if (indexPath.section == 0) { // GHOST MOODE
+    if (indexPath.section == 0) { // FE OPTIONS
+        cell = [self switchCellFromTableView:tableView];
+        cell.imageView.image = nil;
+
+        if (indexPath.row == 0) {
+            cell.textLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_TITLE");
+            cell.detailTextLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_SUBTITLE");
+
+            UISwitch *toggle = (UISwitch *)cell.accessoryView;
+            if (!toggle || ![toggle isKindOfClass:[UISwitch class]]) {
+                toggle = [[UISwitch alloc] init];
+            }
+
+            toggle.on = [[NSUserDefaults standardUserDefaults] boolForKey:kEnableScheduledMessages];
+            [toggle removeTarget:nil action:NULL forControlEvents:UIControlEventValueChanged];
+            [toggle addTarget:self action:@selector(toggleAutoSchedule:) forControlEvents:UIControlEventValueChanged];
+
+            cell.accessoryView = toggle;
+        }
+
+        cell.textLabel.numberOfLines = 0;
+        cell.detailTextLabel.numberOfLines = 0;
+        return cell;
+    }
+  
+	if (indexPath.section == 1) { // GHOST MOODE
 		cell = [self switchCellFromTableView:tableView];
 		cell.imageView.image = nil;
 
@@ -334,7 +365,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		return cell;
 
 	}
-	else if (indexPath.section == 1) { // Read Receipts
+	else if (indexPath.section == 2) { // Read Receipts
 		cell = [self switchCellFromTableView:tableView];
 		cell.imageView.image = nil;
 
@@ -362,7 +393,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		cell.detailTextLabel.numberOfLines = 0;
 		return cell;
 	}
-	else if (indexPath.section == 2) { // MISC
+	else if (indexPath.section == 3) { // MISC
 		cell = [self switchCellFromTableView:tableView];
 		cell.imageView.image = nil;
 
@@ -391,7 +422,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		return cell;
 
 	}
-	if (indexPath.section == 3) { // File Picker Fix
+	if (indexPath.section == 4) { // File Picker Fix
 		if (indexPath.row ==0) { //Enable File Picker Fix
 			cell = [self switchCellFromTableView:tableView];
 
@@ -453,7 +484,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		}
 	}
 
-	if (indexPath.section == 4) { // Fake Location
+	if (indexPath.section == 5) { // Fake Location
 		if (indexPath.row ==0) {
 			cell = [self switchCellFromTableView:tableView];
 
@@ -494,7 +525,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		return cell;
 	}
 
-	if (indexPath.section == 5) { // Language
+	if (indexPath.section == 6) { // Language
 		cell = [self normalCellFromTableView:tableView];
 		if (indexPath.row == 0) {
 			cell.textLabel.text = @"Change Language";
@@ -511,7 +542,7 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 		}
 	}
 
-	if (indexPath.section == 6) { // Credits
+	if (indexPath.section == 7) { // Credits
 		cell = [self normalCellFromTableView:tableView];
 
 		if (indexPath.row == 0) {
@@ -596,7 +627,12 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 
 - (NSString *)switchKeyForIndexPath:(NSIndexPath *)indexPath {
     switch (indexPath.section) {
-        case 0:
+		case 0:
+            switch (indexPath.row) {
+                case 0: return kEnableScheduledMessages;
+                default: return nil;
+            }
+        case 1:
             switch (indexPath.row) {
                 case 0: return kDisableOnlineStatus;
                 case 1: return kDisableTypingStatus;
@@ -617,24 +653,24 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
                 case 16: return kDisableEmojiAcknowledgementStatus;
                 default: return nil;
             }
-        case 1:
+        case 2:
             switch (indexPath.row) {
                 case 0: return kDisableMessageReadReceipt;
                 case 1: return kDisableStoriesReadReceipt;
                 default: return nil;
             }
-        case 2:
+        case 3:
             switch (indexPath.row) {
                 case 0: return kDisableAllAds;
                 case 1: return kDisableForwardRestriction;
                 default: return nil;
             }
-        case 3:
+        case 4:
             switch (indexPath.row) {
                 case 0: return FILE_PICKER_FIX_KEY;
                 default: return nil;
             }
-        case 4:
+        case 5:
             switch (indexPath.row) {
                 case 0: return FAKE_LOCATION_ENABLED_KEY;
                 default: return nil;
