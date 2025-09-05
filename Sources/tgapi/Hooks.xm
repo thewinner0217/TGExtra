@@ -93,52 +93,76 @@
 - (void)sendCurrentMessage {
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     BOOL autoScheduled = [prefs boolForKey:kEnableScheduledMessages];
+
     id message = [self currentMessageObject];
 
     if (autoScheduled && message) {
-        @try {
-            // Calcolo delay per tutti i tipi di messaggio
-            int delay = 12; // default per testo, emoji, sticker
+        NSTimeInterval delay = 12; // default per testo/emoji/sticker
+        NSString *messageType = @"text/emoji/sticker";
+        unsigned long fileSize = 0;
 
-            // Controllo media per delay dinamico
-            NSArray *attributes = [message valueForKey:@"attributes"];
-            for (id attr in attributes) {
-                NSString *className = NSStringFromClass([attr class]);
-                if ([className containsString:@"Media"]) {
-                    double fileSize = 0;
-                    @try { fileSize = [[attr valueForKeyPath:@"media.file.size"] doubleValue]; } @catch (...) {}
-                    if (fileSize > 0) {
-                        double mb = fileSize / 1048576.0;
-                        delay = (int)ceil(mb * 4.5);
-                        if (delay < 6) delay = 6;
-                    }
-                    break;
-                }
+        // Se contiene media, calcolo delay dinamico
+        NSArray *mediaItems = [message valueForKey:@"media"];
+        if (mediaItems && mediaItems.count > 0) {
+            id media = mediaItems.firstObject;
+            NSData *data = [media valueForKey:@"data"];
+            if (data) {
+                fileSize = data.length;
+                delay = MAX(6, ceil((double)fileSize / 1048576.0 * 4.5));
+                messageType = @"media";
             }
-
-            NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + delay;
-
-            // Crea attributo di scheduling
-            Class OutgoingScheduleInfoMessageAttribute = NSClassFromString(@"OutgoingScheduleInfoMessageAttribute");
-            if (OutgoingScheduleInfoMessageAttribute) {
-                id scheduleAttribute = [OutgoingScheduleInfoMessageAttribute new];
-                [scheduleAttribute setValue:@(scheduledTime) forKey:@"scheduleTime"];
-
-                NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:attributes];
-                [newAttributes addObject:scheduleAttribute];
-                [message setValue:newAttributes forKey:@"attributes"];
-            }
-
-            // Invia messaggio con scheduleTime
-            if ([self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
-                [self sendMessage:message scheduleTime:scheduledTime];
-                NSLog(@"[TGExtra] Messaggio programmato a +%ds", delay);
-                return;
-            }
-
-        } @catch (NSException *e) {
-            NSLog(@"[TGExtra] Errore scheduling: %@", e);
         }
+
+        NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + delay;
+
+        // Crea attributo di scheduling
+        Class OutgoingScheduleInfoMessageAttribute = NSClassFromString(@"OutgoingScheduleInfoMessageAttribute");
+        if (OutgoingScheduleInfoMessageAttribute) {
+            id scheduleAttribute = [OutgoingScheduleInfoMessageAttribute new];
+            [scheduleAttribute setValue:@(scheduledTime) forKey:@"scheduleTime"];
+
+            NSArray *existingAttributes = [message valueForKey:@"attributes"];
+            NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:existingAttributes];
+            [newAttributes addObject:scheduleAttribute];
+            [message setValue:newAttributes forKey:@"attributes"];
+        }
+
+        // --- LOG DETTAGLIATO ---
+        NSString *logPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"tg_schedule_log.txt"];
+        NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
+                             messageType, scheduledTime, delay, fileSize];
+        NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
+        if (!file) {
+            [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        } else {
+            [file seekToEndOfFile];
+            [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
+            [file closeFile];
+        }
+
+        // --- INVIO DEL MESSAGGIO CON TRY/CATCH ---
+        @try {
+            [self sendMessage:message scheduleTime:scheduledTime];
+            // Log conferma invio
+            NSString *successLog = [NSString stringWithFormat:@"sendMessage: scheduled successfully\n"];
+            NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
+            if (f) {
+                [f seekToEndOfFile];
+                [f writeData:[successLog dataUsingEncoding:NSUTF8StringEncoding]];
+                [f closeFile];
+            }
+        }
+        @catch (NSException *exception) {
+            NSString *errorLog = [NSString stringWithFormat:@"sendMessage ERROR: %@\n", exception];
+            NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
+            if (f) {
+                [f seekToEndOfFile];
+                [f writeData:[errorLog dataUsingEncoding:NSUTF8StringEncoding]];
+                [f closeFile];
+            }
+        }
+
+        return;
     }
 
     %orig;
