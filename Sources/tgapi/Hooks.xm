@@ -1,3 +1,8 @@
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h> // per NSTimeInterval
+#import "Headers.h"
+
+// Dichiarazione corretta della classe
 @interface TGModernConversationInputController : NSObject
 - (id)currentMessageObject;
 - (void)sendMessage:(id)message scheduleTime:(NSTimeInterval)time;
@@ -101,15 +106,13 @@
     BOOL autoScheduled = [prefs boolForKey:kEnableScheduledMessages];
 
     id message = [self currentMessageObject];
-    
+
     if (autoScheduled && message && [self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
-        // Calcola l'orario di invio 10 secondi nel futuro
         NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + 10;
         [self sendMessage:message scheduleTime:scheduledTime];
-        return; // Evita di chiamare %orig per non inviare doppio
+        return; // evita %orig per non inviare doppio
     }
 
-    // Altrimenti invia normalmente
     %orig;
 }
 
