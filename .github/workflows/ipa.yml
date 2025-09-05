@@ -45,7 +45,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release download release --repo TheWinner02/TGExtra --pattern 'com.choco.tg_*_iphoneos-arm.deb' --dir .
+          gh release download release --repo TheWinner0217/TGExtra --pattern 'com.choco.tg_*_iphoneos-arm.deb' --dir .
 
       - name: Extract TGExtra version
         id: extractTGExtra
@@ -303,3 +303,4 @@ jobs:
             artifacts
             dependencies
           failOnError: false
+
