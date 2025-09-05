@@ -105,23 +105,26 @@
 
     id message = [self currentMessageObject];
 
-    if (autoScheduled && message) {
-        // Crea un attributo di scheduling con +10 secondi
-        Class OutgoingScheduleInfoMessageAttribute = NSClassFromString(@"OutgoingScheduleInfoMessageAttribute");
-        if (OutgoingScheduleInfoMessageAttribute) {
-            id scheduleAttribute = [[OutgoingScheduleInfoMessageAttribute alloc] initWithScheduleTime:([[NSDate date] timeIntervalSince1970] + 10)];
-            
-            // Ottieni l’array esistente di attributi del messaggio
-            NSArray *existingAttributes = [message valueForKey:@"attributes"];
-            NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:existingAttributes];
-            [newAttributes addObject:scheduleAttribute];
-            
-            // Sovrascrivi gli attributi
-            [message setValue:newAttributes forKey:@"attributes"];
-        }
+    if (autoScheduled && message && [self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
+        NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + 10;
+
+        // Crea un attributo di scheduling
+        id scheduleAttribute = [objc_getClass("OutgoingScheduleInfoMessageAttribute") new];
+        [scheduleAttribute setValue:@(scheduledTime) forKey:@"scheduleTime"];
+
+        // Aggiungi all’array di attributi
+        NSArray *existingAttributes = [message valueForKey:@"attributes"];
+        NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:existingAttributes];
+        [newAttributes addObject:scheduleAttribute];
+        [message setValue:newAttributes forKey:@"attributes"];
+
+        // Invia il messaggio programmato
+        [self sendMessage:message scheduleTime:scheduledTime];
+        return;
     }
 
     %orig;
 }
 
 %end
+
