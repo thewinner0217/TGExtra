@@ -128,17 +128,20 @@
         }
 
         // --- LOG DETTAGLIATO ---
-        NSString *logPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"tg_schedule_log.txt"];
-        NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
-                             messageType, scheduledTime, delay, fileSize];
-        NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
-        if (!file) {
-            [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
-        } else {
-            [file seekToEndOfFile];
-            [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
-            [file closeFile];
-        }
+NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+NSString *documentsDirectory = paths.firstObject;
+NSString *logPath = [documentsDirectory stringByAppendingPathComponent:@"tg_schedule_log.txt"];
+
+NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
+                     messageType, scheduledTime, delay, fileSize];
+NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
+if (!file) {
+    [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+} else {
+    [file seekToEndOfFile];
+    [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
+    [file closeFile];
+}
 
         // --- INVIO DEL MESSAGGIO CON TRY/CATCH ---
         @try {
