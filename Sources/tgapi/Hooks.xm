@@ -1,3 +1,8 @@
+@interface TGModernConversationInputController : NSObject
+- (id)currentMessageObject;
+- (void)sendMessage:(id)message scheduleTime:(NSTimeInterval)time;
+@end
+
 #import "Headers.h"
 
 #define kChannelsReadHistory -871347913
