@@ -95,13 +95,12 @@
     BOOL autoScheduled = [prefs boolForKey:kEnableScheduledMessages];
 
     id message = [self currentMessageObject];
-
     if (autoScheduled && message) {
-        NSTimeInterval delay = 12; // default per testo/emoji/sticker
-        NSString *messageType = @"text/emoji/sticker";
+        NSTimeInterval delay = 12; // default testo/emoji/sticker
         unsigned long fileSize = 0;
+        NSString *messageType = @"text/emoji/sticker";
 
-        // Se contiene media, calcolo delay dinamico
+        // Controllo media
         NSArray *mediaItems = [message valueForKey:@"media"];
         if (mediaItems && mediaItems.count > 0) {
             id media = mediaItems.firstObject;
@@ -115,47 +114,40 @@
 
         NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + delay;
 
-        // Crea attributo di scheduling
-        Class OutgoingScheduleInfoMessageAttribute = NSClassFromString(@"OutgoingScheduleInfoMessageAttribute");
-        if (OutgoingScheduleInfoMessageAttribute) {
-            id scheduleAttribute = [OutgoingScheduleInfoMessageAttribute new];
-            [scheduleAttribute setValue:@(scheduledTime) forKey:@"scheduleTime"];
-
-            NSArray *existingAttributes = [message valueForKey:@"attributes"];
-            NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:existingAttributes];
-            [newAttributes addObject:scheduleAttribute];
-            [message setValue:newAttributes forKey:@"attributes"];
+        // --- Imposta scheduleDate direttamente sul message request ---
+        @try {
+            [message setValue:@(scheduledTime) forKey:@"scheduleDate"];
+            int32_t flags = [[message valueForKey:@"flags"] intValue];
+            flags |= (1 << 10); // abilita scheduling
+            [message setValue:@(flags) forKey:@"flags"];
+        } @catch (NSException *e) {
+            NSLog(@"[TGExtra] Failed to set scheduleDate: %@", e);
         }
 
-        // --- LOG DETTAGLIATO ---
-NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-NSString *documentsDirectory = paths.firstObject;
-NSString *logPath = [documentsDirectory stringByAppendingPathComponent:@"tg_schedule_log.txt"];
+        // --- Log dettagliato ---
+        NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Dowload/tg_schedule_log.txt"];
+        NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
+                             messageType, scheduledTime, delay, fileSize];
+        NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
+        if (!file) {
+            [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        } else {
+            [file seekToEndOfFile];
+            [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
+            [file closeFile];
+        }
 
-NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
-                     messageType, scheduledTime, delay, fileSize];
-NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
-if (!file) {
-    [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
-} else {
-    [file seekToEndOfFile];
-    [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
-    [file closeFile];
-}
-
-        // --- INVIO DEL MESSAGGIO CON TRY/CATCH ---
+        // --- Invio messaggio programmato ---
         @try {
             [self sendMessage:message scheduleTime:scheduledTime];
-            // Log conferma invio
-            NSString *successLog = [NSString stringWithFormat:@"sendMessage: scheduled successfully\n"];
+            NSString *successLog = @"sendMessage: scheduled successfully\n";
             NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
             if (f) {
                 [f seekToEndOfFile];
                 [f writeData:[successLog dataUsingEncoding:NSUTF8StringEncoding]];
                 [f closeFile];
             }
-        }
-        @catch (NSException *exception) {
+        } @catch (NSException *exception) {
             NSString *errorLog = [NSString stringWithFormat:@"sendMessage ERROR: %@\n", exception];
             NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
             if (f) {
