@@ -105,12 +105,20 @@
 
     id message = [self currentMessageObject];
 
-    if (autoScheduled && message && [self respondsToSelector:@selector(sendMessage:scheduleTime:)]) {
-        NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + 10;
-        [self sendMessage:message scheduleTime:scheduledTime];
-
-        // BLOCCA l'invio normale per evitare doppi messaggi
-        return;
+    if (autoScheduled && message) {
+        // Crea un attributo di scheduling con +10 secondi
+        Class OutgoingScheduleInfoMessageAttribute = NSClassFromString(@"OutgoingScheduleInfoMessageAttribute");
+        if (OutgoingScheduleInfoMessageAttribute) {
+            id scheduleAttribute = [[OutgoingScheduleInfoMessageAttribute alloc] initWithScheduleTime:([[NSDate date] timeIntervalSince1970] + 10)];
+            
+            // Ottieni l’array esistente di attributi del messaggio
+            NSArray *existingAttributes = [message valueForKey:@"attributes"];
+            NSMutableArray *newAttributes = [NSMutableArray arrayWithArray:existingAttributes];
+            [newAttributes addObject:scheduleAttribute];
+            
+            // Sovrascrivi gli attributi
+            [message setValue:newAttributes forKey:@"attributes"];
+        }
     }
 
     %orig;
