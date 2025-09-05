@@ -252,29 +252,38 @@ typedef NS_ENUM(NSInteger, TABLE_VIEW_SECTIONS) {
 	UITableViewCell *cell;
 
     if (indexPath.section == 0) { // FE OPTIONS
-        cell = [self switchCellFromTableView:tableView];
-        cell.imageView.image = nil;
+    cell = [self switchCellFromTableView:tableView];
+    cell.imageView.image = nil;
 
-        if (indexPath.row == 0) {
-            cell.textLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_TITLE");
-            cell.detailTextLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_SUBTITLE");
+    if (indexPath.row == 0) {
+        cell.textLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_TITLE");
+        cell.detailTextLabel.text = TGLoc(@"ENABLE_SCHEDULED_MESSAGES_SUBTITLE");
 
-            UISwitch *toggle = (UISwitch *)cell.accessoryView;
-            if (!toggle || ![toggle isKindOfClass:[UISwitch class]]) {
-                toggle = [[UISwitch alloc] init];
-            }
-
-            toggle.on = [[NSUserDefaults standardUserDefaults] boolForKey:kEnableScheduledMessages];
-            [toggle removeTarget:nil action:NULL forControlEvents:UIControlEventValueChanged];
-            [toggle addTarget:self action:@selector(toggleAutoSchedule:) forControlEvents:UIControlEventValueChanged];
-
-            cell.accessoryView = toggle;
+        UISwitch *toggle = (UISwitch *)cell.accessoryView;
+        if (!toggle || ![toggle isKindOfClass:[UISwitch class]]) {
+            toggle = [[UISwitch alloc] init];
         }
 
-        cell.textLabel.numberOfLines = 0;
-        cell.detailTextLabel.numberOfLines = 0;
-        return cell;
+        // Imposta un valore di default sicuro
+        NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+        if ([prefs objectForKey:kEnableScheduledMessages] == nil) {
+            [prefs setBool:NO forKey:kEnableScheduledMessages];
+            [prefs synchronize];
+        }
+
+        toggle.on = [prefs boolForKey:kEnableScheduledMessages];
+
+        // Rimuovi vecchi target prima di aggiungere il nuovo
+        [toggle removeTarget:nil action:NULL forControlEvents:UIControlEventValueChanged];
+        [toggle addTarget:self action:@selector(toggleAutoSchedule:) forControlEvents:UIControlEventValueChanged];
+
+        cell.accessoryView = toggle;
     }
+
+    cell.textLabel.numberOfLines = 0;
+    cell.detailTextLabel.numberOfLines = 0;
+    return cell;
+	}
   
 	if (indexPath.section == 1) { // GHOST MOODE
 		cell = [self switchCellFromTableView:tableView];
