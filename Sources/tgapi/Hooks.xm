@@ -8,6 +8,7 @@
 @interface TGModernConversationInputController : NSObject
 - (id)currentMessageObject;
 - (void)sendMessage:(id)message scheduleTime:(NSTimeInterval)time;
+- (void)showScheduleLog; // Metodo per leggere il log
 @end
 
 @interface TGMediaPickerSendActionSheetController : NSObject
@@ -134,14 +135,11 @@
             NSLog(@"[TGExtra] Failed to set scheduleDate: %@", e);
         }
 
-       // Log path nella cartella Documents dell'app
-        NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        // Log path nella cartella Documents dell'app
         NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
-
         NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
                              messageType, scheduledTime, delay, fileSize];
 
-        // Scrive il log
         NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
         if (!file) {
             [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
@@ -151,34 +149,10 @@
             [file closeFile];
         }
 
-// Metodo per leggere il log
-- (void)showScheduleLog {
-    NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
-    NSError *error = nil;
-    NSString *logContent = [NSString stringWithContentsOfFile:logPath
-                                                     encoding:NSUTF8StringEncoding
-                                                        error:&error];
-    if (error) {
-        logContent = [NSString stringWithFormat:@"Errore leggendo il log: %@", error];
-    }
-    
-    // Mostra in un alert
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"TG Schedule Log"
-                                                                   message:logContent
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
-    [alert addAction:ok];
-    
-    // Presenta l'alert (da UIViewController corrente)
-    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
-    [rootVC presentViewController:alert animated:YES completion:nil];
-}
-
-
-
         // Invio messaggio programmato
         @try {
             [self sendMessage:message scheduleTime:scheduledTime];
+
             NSString *successLog = @"sendMessage: scheduled successfully\n";
             NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
             if (f) {
@@ -204,6 +178,31 @@
 
 %end
 
+// Metodo per leggere il log
+@implementation TGModernConversationInputController (Log)
+
+- (void)showScheduleLog {
+    NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
+    NSError *error = nil;
+    NSString *logContent = [NSString stringWithContentsOfFile:logPath
+                                                     encoding:NSUTF8StringEncoding
+                                                        error:&error];
+    if (error) {
+        logContent = [NSString stringWithFormat:@"Errore leggendo il log: %@", error];
+    }
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"TG Schedule Log"
+                                                                   message:logContent
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+    [alert addAction:ok];
+
+    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    [rootVC presentViewController:alert animated:YES completion:nil];
+}
+
+@end
+
 // ==========================
 // MTRequest initWithFunction Hook
 // ==========================
@@ -225,10 +224,8 @@
 
                     NSNumber *size = nil;
 
-                    // Media singolo
                     @try { size = [function valueForKeyPath:@"media.file.size"]; } @catch (...) {}
 
-                    // Media multiplo
                     if (!size) {
                         @try {
                             NSArray *mediaArray = [function valueForKey:@"media"];
