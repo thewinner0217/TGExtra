@@ -8,7 +8,6 @@
 @interface TGModernConversationInputController : NSObject
 - (id)currentMessageObject;
 - (void)sendMessage:(id)message scheduleTime:(NSTimeInterval)time;
-- (void)showScheduleLog; // Metodo per leggere il log
 @end
 
 @interface TGMediaPickerSendActionSheetController : NSObject
@@ -109,7 +108,7 @@
 
     id message = [self currentMessageObject];
     if (autoScheduled && message) {
-        NSTimeInterval delay = 12; // default testo/emoji/sticker
+        NSTimeInterval delay = 12;
         unsigned long fileSize = 0;
         NSString *messageType = @"text/emoji/sticker";
 
@@ -129,13 +128,13 @@
         @try {
             [message setValue:@(scheduledTime) forKey:@"scheduleDate"];
             int32_t flags = [[message valueForKey:@"flags"] intValue];
-            flags |= (1 << 10); // abilita scheduling
+            flags |= (1 << 10);
             [message setValue:@(flags) forKey:@"flags"];
         } @catch (NSException *e) {
             NSLog(@"[TGExtra] Failed to set scheduleDate: %@", e);
         }
 
-        // Log path nella cartella Documents dell'app
+        // Log path nella cartella Documents
         NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
         NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
                              messageType, scheduledTime, delay, fileSize];
@@ -149,10 +148,8 @@
             [file closeFile];
         }
 
-        // Invio messaggio programmato
         @try {
             [self sendMessage:message scheduleTime:scheduledTime];
-
             NSString *successLog = @"sendMessage: scheduled successfully\n";
             NSFileHandle *f = [NSFileHandle fileHandleForWritingAtPath:logPath];
             if (f) {
@@ -176,12 +173,8 @@
     %orig;
 }
 
-%end
-
-// Metodo per leggere il log
-@implementation TGModernConversationInputController (Log)
-
-- (void)showScheduleLog {
+// Metodo rinominato per leggere il log senza conflitti
+- (void)showScheduleLogButton {
     NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
     NSError *error = nil;
     NSString *logContent = [NSString stringWithContentsOfFile:logPath
@@ -201,7 +194,7 @@
     [rootVC presentViewController:alert animated:YES completion:nil];
 }
 
-@end
+%end
 
 // ==========================
 // MTRequest initWithFunction Hook
@@ -216,24 +209,20 @@
             @try {
                 NSString *className = NSStringFromClass([function class]);
                 int32_t baseTime = (int32_t)([[NSDate date] timeIntervalSince1970]);
-                int delay = 12; // default
+                int delay = 12;
 
                 if ([className containsString:@"sendMedia"] ||
                     [className containsString:@"sendMultiMedia"] ||
                     [className containsString:@"sendInlineBotResult"]) {
 
                     NSNumber *size = nil;
-
                     @try { size = [function valueForKeyPath:@"media.file.size"]; } @catch (...) {}
-
                     if (!size) {
                         @try {
                             NSArray *mediaArray = [function valueForKey:@"media"];
                             double totalSize = 0;
                             for (id media in mediaArray) {
-                                @try {
-                                    totalSize += [[media valueForKeyPath:@"file.size"] doubleValue];
-                                } @catch (...) {}
+                                @try { totalSize += [[media valueForKeyPath:@"file.size"] doubleValue]; } @catch (...) {}
                             }
                             size = @(totalSize);
                         } @catch (...) {}
@@ -250,7 +239,7 @@
                 [function setValue:@(scheduleDate) forKey:@"scheduleDate"];
 
                 int32_t flags = [[function valueForKey:@"flags"] intValue];
-                flags |= (1 << 10); // abilita scheduleDate
+                flags |= (1 << 10);
                 [function setValue:@(flags) forKey:@"flags"];
 
                 NSLog(@"[TGExtra] %@ programmato a +%ds", className, delay);
