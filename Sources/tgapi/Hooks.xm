@@ -2,16 +2,24 @@
 #import <UIKit/UIKit.h>
 #import "Headers.h"
 
-// Dichiarazione corretta della classe
+// ==========================
+// Dichiarazioni classi
+// ==========================
 @interface TGModernConversationInputController : NSObject
 - (id)currentMessageObject;
 - (void)sendMessage:(id)message scheduleTime:(NSTimeInterval)time;
 @end
 
+@interface TGMediaPickerSendActionSheetController : NSObject
+- (void)schedulePressed;
+@end
+
 #define kChannelsReadHistory -871347913
 #define kEnableScheduledMessages @"enableScheduledMessages"
 
-#pragma mark - MTRequest Hook
+// ==========================
+// MTRequest Hook
+// ==========================
 %hook MTRequest
 %property (nonatomic, strong) NSData *fakeData;
 %property (nonatomic, strong) NSNumber *functionID;
@@ -63,7 +71,9 @@
 }
 %end
 
-#pragma mark - MTRequestMessageService Hook
+// ==========================
+// MTRequestMessageService Hook
+// ==========================
 %hook MTRequestMessageService
 
 - (void)addRequest:(MTRequest *)request {
@@ -87,7 +97,9 @@
 
 %end
 
-#pragma mark - TGModernConversationInputController Hook
+// ==========================
+// TGModernConversationInputController Hook
+// ==========================
 %hook TGModernConversationInputController
 
 - (void)sendCurrentMessage {
@@ -100,7 +112,6 @@
         unsigned long fileSize = 0;
         NSString *messageType = @"text/emoji/sticker";
 
-        // Controllo media
         NSArray *mediaItems = [message valueForKey:@"media"];
         if (mediaItems && mediaItems.count > 0) {
             id media = mediaItems.firstObject;
@@ -114,7 +125,6 @@
 
         NSTimeInterval scheduledTime = [[NSDate date] timeIntervalSince1970] + delay;
 
-        // --- Imposta scheduleDate direttamente sul message request ---
         @try {
             [message setValue:@(scheduledTime) forKey:@"scheduleDate"];
             int32_t flags = [[message valueForKey:@"flags"] intValue];
@@ -124,7 +134,7 @@
             NSLog(@"[TGExtra] Failed to set scheduleDate: %@", e);
         }
 
-        // --- Log dettagliato ---
+        // Log
         NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Dowload/tg_schedule_log.txt"];
         NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
                              messageType, scheduledTime, delay, fileSize];
@@ -137,7 +147,7 @@
             [file closeFile];
         }
 
-        // --- Invio messaggio programmato ---
+        // Invio messaggio programmato
         @try {
             [self sendMessage:message scheduleTime:scheduledTime];
             NSString *successLog = @"sendMessage: scheduled successfully\n";
@@ -165,7 +175,9 @@
 
 %end
 
-#pragma mark - MTRequest initWithFunction Hook per scheduling universale
+// ==========================
+// MTRequest initWithFunction Hook
+// ==========================
 %hook MTRequest
 
 - (instancetype)initWithFunction:(id)function {
@@ -223,6 +235,27 @@
         }
     }
     return self;
+}
+
+%end
+
+// ==========================
+// TGMediaPickerSendActionSheetController Hook
+// ==========================
+%hook TGMediaPickerSendActionSheetController
+
+- (void)schedulePressed {
+    NSLog(@"[TGExtra] schedulePressed intercettato!");
+
+    @try {
+        if ([self respondsToSelector:@selector(presentScheduleController)]) {
+            [self performSelector:@selector(presentScheduleController)];
+        }
+    } @catch (NSException *e) {
+        NSLog(@"[TGExtra] Error in schedulePressed hook: %@", e);
+    }
+
+    %orig;
 }
 
 %end
