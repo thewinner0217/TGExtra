@@ -134,10 +134,14 @@
             NSLog(@"[TGExtra] Failed to set scheduleDate: %@", e);
         }
 
-        // Log
-        NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Dowload/tg_schedule_log.txt"];
+       // Log path nella cartella Documents dell'app
+        NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        NSString *logPath = [documentsPath stringByAppendingPathComponent:@"tg_schedule_log.txt"];
+
         NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
                              messageType, scheduledTime, delay, fileSize];
+
+        // Scrive il log
         NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
         if (!file) {
             [msgDesc writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
@@ -146,6 +150,7 @@
             [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
             [file closeFile];
         }
+
 
         // Invio messaggio programmato
         @try {
