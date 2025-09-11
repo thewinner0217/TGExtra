@@ -136,7 +136,7 @@
 
        // Log path nella cartella Documents dell'app
         NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-        NSString *logPath = [documentsPath stringByAppendingPathComponent:@"tg_schedule_log.txt"];
+        NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
 
         NSString *msgDesc = [NSString stringWithFormat:@"MessageType: %@, ScheduledTime: %.0f, Delay: %.2f, FileSize: %lu\n",
                              messageType, scheduledTime, delay, fileSize];
@@ -150,6 +150,30 @@
             [file writeData:[msgDesc dataUsingEncoding:NSUTF8StringEncoding]];
             [file closeFile];
         }
+
+// Metodo per leggere il log
+- (void)showScheduleLog {
+    NSString *logPath = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/tg_schedule_log.txt"];
+    NSError *error = nil;
+    NSString *logContent = [NSString stringWithContentsOfFile:logPath
+                                                     encoding:NSUTF8StringEncoding
+                                                        error:&error];
+    if (error) {
+        logContent = [NSString stringWithFormat:@"Errore leggendo il log: %@", error];
+    }
+    
+    // Mostra in un alert
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"TG Schedule Log"
+                                                                   message:logContent
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil];
+    [alert addAction:ok];
+    
+    // Presenta l'alert (da UIViewController corrente)
+    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    [rootVC presentViewController:alert animated:YES completion:nil];
+}
+
 
 
         // Invio messaggio programmato
