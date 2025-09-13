@@ -4,6 +4,7 @@
 #import <objc/runtime.h>
 
 #define kEnableScheduledMessages @"enableScheduledMessages"
+#define kChannelsReadHistory 0xDEADBEEF
 
 // DICHIARAZIONI MINIME (solo selector che usiamo)
 @interface TGModernConversationInputController : NSObject
